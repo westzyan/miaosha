@@ -1,6 +1,8 @@
 package com.zyan.miaosha.controller;
 
 import com.zyan.miaosha.domain.User;
+import com.zyan.miaosha.redis.RedisService;
+import com.zyan.miaosha.redis.UserKey;
 import com.zyan.miaosha.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -17,6 +19,9 @@ public class DemoController {
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    RedisService redisService;
 
     @RequestMapping("/")
     @ResponseBody
@@ -49,6 +54,30 @@ public class DemoController {
     public Result<User> dbGet(){
         User user = userService.getById(1);
         return Result.success(user);
+    }
+
+    @RequestMapping("/dbtx")
+    @ResponseBody
+    public Result<Boolean> dbTx(){
+        Boolean user = userService.tx();
+        return Result.success(true);
+    }
+    @RequestMapping("/redisget")
+    @ResponseBody
+    public Result<User> redisGet(){
+        User v1 = redisService.get(UserKey.getById,""+1 ,User.class);
+        return Result.success(v1);
+    }
+
+    @RequestMapping("/redisset")
+    @ResponseBody
+    public Result<Boolean> redisSet(){
+        User user = new User();
+        user.setName("555");
+        user.setId(555);
+        boolean v1 = redisService.set(UserKey.getById, "1",user);
+
+        return Result.success(v1);
     }
 
 }
