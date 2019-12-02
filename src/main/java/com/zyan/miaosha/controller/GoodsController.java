@@ -4,9 +4,11 @@ import com.zyan.miaosha.domain.MiaoshaOrder;
 import com.zyan.miaosha.domain.OrderInfo;
 import com.zyan.miaosha.redis.GoodsKey;
 import com.zyan.miaosha.result.CodeMsg;
+import com.zyan.miaosha.result.Result;
 import com.zyan.miaosha.service.GoodsService;
 import com.zyan.miaosha.service.MiaoshaService;
 import com.zyan.miaosha.service.OrderService;
+import com.zyan.miaosha.vo.GoodsDetailVo;
 import com.zyan.miaosha.vo.GoodsVo;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,31 +158,67 @@ public class GoodsController {
 	}
 
 
-	@RequestMapping("/do_miaosha")
-	public String list(Model model, MiaoshaUser user,
+	@RequestMapping(value="/detail/{goodsId}")
+	@ResponseBody
+	public Result<GoodsDetailVo> detail(HttpServletRequest request, HttpServletResponse response, Model model, MiaoshaUser user,
+										@PathVariable("goodsId")long goodsId) {
+		GoodsVo goods = goodsService.getGoodsVoByGoodsId(goodsId);
+		long startAt = goods.getStartDate().getTime();
+		long endAt = goods.getEndDate().getTime();
+		long now = System.currentTimeMillis();
+		int miaoshaStatus = 0;
+		int remainSeconds = 0;
+		if(now < startAt ) {//秒杀还没开始，倒计时
+			miaoshaStatus = 0;
+			remainSeconds = (int)((startAt - now )/1000);
+		}else  if(now > endAt){//秒杀已经结束
+			miaoshaStatus = 2;
+			remainSeconds = -1;
+		}else {//秒杀进行中
+			miaoshaStatus = 1;
+			remainSeconds = 0;
+		}
+		GoodsDetailVo vo = new GoodsDetailVo();
+		vo.setGoodsVo(goods);
+		vo.setMiaoshaUser(user);
+		vo.setRemainSeconds(remainSeconds);
+		vo.setMiaoshaStatus(miaoshaStatus);
+		return Result.success(vo);
+	}
+
+
+	/**
+	 * Get Post 区别
+	 * get 幂等
+	 * post
+	 * @param model
+	 * @param user
+	 * @param goodsId
+	 * @return
+	 */
+	@RequestMapping(value = "/do_miaosha", method = RequestMethod.POST)
+	@ResponseBody
+	public Result<OrderInfo> list(Model model, MiaoshaUser user,
 					   @RequestParam("goodsId")long goodsId) {
 		model.addAttribute("user", user);
 		if (user == null){
-			return "login";
+			return Result.error(CodeMsg.SESSION_ERROR);
 		}
 		//判断库存
 		GoodsVo goodsVo = goodsService.getGoodsVoByGoodsId(goodsId);
 		int stock = goodsVo.getStockCount();
 		if (stock <= 0){
-			model.addAttribute("errmsg", CodeMsg.MIAOSHA_OVER.getMsg());
-			return "miaosha_fail";
+			return Result.error(CodeMsg.MIAOSHA_OVER);
 		}
 		//判断是否已经秒杀到
 		MiaoshaOrder miaoshaOrder = orderService.getMiaoshaOrderByUserIdGoodsId(user.getId(), goodsVo.getId());
 		if (miaoshaOrder != null){
 			model.addAttribute("errmsg", CodeMsg.REPEAT_MIAOSHA.getMsg());
-			return "miaosha_fail";
+			return Result.error(CodeMsg.REPEAT_MIAOSHA);
 		}
 		//减库存，写订单，写入秒杀订单
 		OrderInfo orderInfo = miaoshaService.miaosha(user, goodsVo);
-		model.addAttribute("orderInfo", orderInfo);
-		model.addAttribute("goods", goodsVo);
-		return "order_detail";
+		return Result.success(orderInfo);
 	}
     
 }
