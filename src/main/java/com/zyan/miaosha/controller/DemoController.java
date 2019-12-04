@@ -1,6 +1,7 @@
 package com.zyan.miaosha.controller;
 
 import com.zyan.miaosha.domain.User;
+import com.zyan.miaosha.rabbitmq.MQSender;
 import com.zyan.miaosha.redis.RedisService;
 import com.zyan.miaosha.redis.UserKey;
 import com.zyan.miaosha.service.UserService;
@@ -23,6 +24,9 @@ public class DemoController {
     @Autowired
     RedisService redisService;
 
+    @Autowired
+    MQSender mqSender;
+
     @RequestMapping("/")
     @ResponseBody
     String home() {
@@ -35,6 +39,43 @@ public class DemoController {
         return Result.success("hello,imooc");
         // return new Result(0, "success", "hello,imooc");
     }
+
+
+    @RequestMapping("/mq")
+    @ResponseBody
+    public Result<String> mq() {
+        mqSender.send("hello mq");
+        return Result.success("hello,imooc");
+        // return new Result(0, "success", "hello,imooc");
+    }
+
+    @RequestMapping("/mq/topic")
+    @ResponseBody
+    public Result<String> mqTopic() {
+        mqSender.sendTopic("hello mq");
+        return Result.success("hello,imooc");
+        // return new Result(0, "success", "hello,imooc");
+    }
+
+    //swagger
+    @RequestMapping("/mq/fanout")
+    @ResponseBody
+    public Result<String> mqFanout() {
+        mqSender.sendFanout("hello mq");
+        return Result.success("hello,imooc");
+        // return new Result(0, "success", "hello,imooc");
+    }
+
+    //swagger
+    @RequestMapping("/mq/header")
+    @ResponseBody
+    public Result<String> mqHeader() {
+        mqSender.sendHeader("hello mq");
+        return Result.success("hello,imooc");
+        // return new Result(0, "success", "hello,imooc");
+    }
+
+
 
     @RequestMapping("/helloError")
     @ResponseBody
